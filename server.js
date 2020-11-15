@@ -3,6 +3,7 @@ const PORT = process.env.PORT || 3001;
 const app = express();
 //verbose is execution mode
 const sqlite3 = require('sqlite3').verbose();
+const inputCheck = require('./utils/inputCheck');
 
 //Express middleware
 app.use(express.urlencoded({ extended: false }));
@@ -71,16 +72,27 @@ app.get('/api/candidates', (req, res) => {
     });
 });
 //Create a candidate
-const sql = `INSERT INTO candidates (id, first_name, last_name, industry_connected)
-            VALUES (?,?,?,?)`;
-const params = [1, 'Ronald', 'Firbank', 1];
-//ES5 function, not arrow function, use this
-db.run(sql, params, function(err, result) {
-    if (err) {
-        console.log(err);
+app.post('/api/candidate', ({ body }, res) => {
+    const errors = inputCheck(body, 'first_name', 'last_name', 'industry_conected');
+    if (errors) {
+        const sql = `INSERT INTO candidates (first_name, last_name, industry_connected)
+            VALUES (?,?,?)`;
+        const params = [body.first_name, body.last_name, body.industry_connected];
+        //ES5 function, not arrow function, to use `this`
+        db.run(sql, params, function(err, result) {
+            if (err) {
+                res.status(400).json({ error: err.message });
+            return;
+        }
+        res.json({
+            message: 'success',
+            data: body,
+            id: this.lastID
+        });
+        });
     }
-    console.log(result, this.lastID);
 });
+
 //Default response for any other requests(Not found) Catch all
 app.use((req, res) => {
     res.status(404).end();
